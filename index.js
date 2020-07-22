@@ -5,13 +5,20 @@ let completed = document.querySelector(".completed");
 let clear = document.querySelector(".clearCompleted");
 let ul = document.querySelector(".list");
 let footer = document.querySelector(".footer");
-let arrow = document.querySelector(".img");
 let left = document.querySelector(".left");
-let store = Redux.createStore(reducer);
 
-function reducer(state = { list: [], tab: "all" }, action) {
+const ADD_TODO = "ADD_TODO";
+const DELETE_TODO = "DELETE_TODO";
+const TOGGLE_TODO = "TOGGLE_TODO";
+const ALL_TODO = "ALL_TODO";
+const ACTIVE_TODO = "ACTIVE_TODO";
+const COMPLETE_TODO = "COMPLETE_TODO";
+const CLEAR_TODO = "CLEAR_TODO";
+const EDIT_TODO = "EDIT_TODO";
+
+function reducer(state = { todolist: [], tab: "all" }, action) {
   switch (action.type) {
-    case "ADD_Todo": {
+    case ADD_TODO:
       const newTodo = {
         id: Date.now(),
         text: action.text,
@@ -19,78 +26,92 @@ function reducer(state = { list: [], tab: "all" }, action) {
       };
       return {
         ...state,
-        list: state.list.concat(newTodo),
+        todolist: state.todolist.concat(newTodo),
       };
-    }
-    case "Delete_Todo": {
+
+    case DELETE_TODO:
       return {
         ...state,
-        list: state.list.filter((todo) => !(todo.id == action.id)),
+        todolist: state.todolist.filter((todo) => !(todo.id == action.id)),
       };
-    }
-    case "Toggle_Todo": {
+
+    case TOGGLE_TODO:
       return {
         ...state,
-        list: state.list.map((todo) => {
+        todolist: state.todolist.map((todo) => {
           if (todo.id === action.id) {
             todo.isDone = !todo.isDone;
           }
           return todo;
         }),
       };
-    }
-    case "All_Todo": {
+
+    case ALL_TODO:
       return {
         ...state,
         tab: "all",
       };
-    }
-    case "Active_Todo": {
+
+    case ACTIVE_TODO:
       return {
         ...state,
         tab: "active",
       };
-    }
-    case "Completed_Todo": {
+
+    case COMPLETE_TODO:
       return {
         ...state,
         tab: "complete",
       };
-    }
-    case "CLEAR_COMPLETED": {
+
+    case CLEAR_TODO:
       return {
         ...state,
-        list: state.list.filter((todo) => !todo.isDone),
+        todolist: state.todolist.filter((todo) => !todo.isDone),
       };
-    }
-    case "ARROW_SELECT": {
-      newList = state.list.filter((todo) => !todo.isDone);
-      if (newList.length > 0) {
-        return {
-          ...state,
-          list: state.list.map((todo) => {
-            todo.isDone = true;
-            return todo;
-          }),
-        };
-      } else {
-        return {
-          ...state,
-          list: state.list.map((todo) => {
-            todo.isDone = false;
-            return todo;
-          }),
-        };
-      }
-    }
+    case EDIT_TODO:
+      return {
+        ...state,
+        todolist: state.todolist.map((todo) => {
+          if (todo.id === action.load.id) {
+            todo.text = action.load.text;
+          }
+          return todo;
+        }),
+      };
+    default:
+      return state;
   }
 }
 
-function createUi() {
+let store = Redux.createStore(reducer);
+
+const handleEdit = (e, id) => {
+  console.log(e, "e");
+  let val = e.target.innerHTML;
+  const input = document.createElement("input");
+  input.value = val;
+  e.target.parentElement.replaceChild(input, e.target);
+  input.focus();
+  input.addEventListener("keyup", (e) => {
+    console.log(e);
+    if (e.keyCode == 13) {
+      console.log(e.target.keyCode, "dfghjk");
+      store.dispatch({
+        type: EDIT_TODO,
+        load: {
+          id,
+          text: input.value,
+        },
+      });
+    }
+  });
+};
+
+function createUi(ul, todos) {
   ul.innerHTML = "";
-  const todos = store.getState();
   console.log(store.getState(), "here");
-  let filterTodo = todos.list.filter((todo) => {
+  let filterTodo = todos.todolist.filter((todo) => {
     if (todos.tab == "active" && todo.isDone == false) {
       return todo;
     } else if (todos.tab == "complete" && todo.isDone == true) {
@@ -100,6 +121,9 @@ function createUi() {
     }
   });
   leftList = filterTodo.filter((todo) => !todo.isDone);
+  // {
+  //   console.log(leftList.length, "check theb item");
+  // }
   left.innerHTML = `${leftList.length} items left`;
   filterTodo.forEach((todo) => {
     let li = document.createElement("li");
@@ -109,73 +133,68 @@ function createUi() {
     checkInput.type = "checkbox";
     checkInput.checked = todo.isDone;
     p.classList.add("para");
+
     li.classList.add("li_styles");
     spanX.className = "remove_items";
     spanX.innerHTML = "X";
     spanX.addEventListener("click", () => {
       store.dispatch({
-        type: "Delete_Todo",
+        type: DELETE_TODO,
         id: todo.id,
       });
     });
     if (todo.isDone) p.style.textDecoration = "line-through";
     checkInput.addEventListener("click", () => {
       store.dispatch({
-        type: "Toggle_Todo",
+        type: TOGGLE_TODO,
         id: todo.id,
         isDone: todo.isDone,
       });
     });
     p.innerHTML = todo.text;
+    p.addEventListener("dblclick", (e) => handleEdit(e, todo.id));
     li.append(checkInput, p, spanX);
     ul.append(li);
   });
 }
 
-store.subscribe(createUi);
+store.subscribe(() => createUi(ul, store.getState()));
 
 add.addEventListener("keyup", (event) => {
-  if (event.keyCode === 13 && event.target.value.trim() !== "") {
+  if (event.keyCode === 13) {
     const text = event.target.value;
     store.dispatch({
-      type: "ADD_Todo",
+      type: ADD_TODO,
       text,
     });
     event.target.value = "";
   }
 });
 
-all.addEventListener("click", (event) => {
-  console.log("all");
+all.addEventListener("click", (e) => {
+  // console.log("all");
   store.dispatch({
-    type: "All_Todo",
+    type: ALL_TODO,
   });
 });
 
-active.addEventListener("click", (event) => {
-  console.log("active");
+active.addEventListener("click", (e) => {
+  // console.log("check the event");
   store.dispatch({
-    type: "Active_Todo",
+    type: ACTIVE_TODO,
   });
 });
 
-completed.addEventListener("click", (event) => {
-  console.log("complete");
+completed.addEventListener("click", (e) => {
+  // console.log("check the event");
   store.dispatch({
-    type: "Completed_Todo",
+    type: COMPLETE_TODO,
   });
 });
 
-clear.addEventListener("click", (event) => {
-  console.log("clear");
+clear.addEventListener("click", (e) => {
+  // console.log("check the event");
   store.dispatch({
-    type: "CLEAR_COMPLETED",
-  });
-});
-
-arrow.addEventListener("click", (event) => {
-  console.log("arrow");
-  store.dispatch({
-    type: "ARROW_SELECT",
+    type: CLEAR_TODO,
   });
 });
